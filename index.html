@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Poster Index</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #07080f;
+      --surface:   #0d1020;
+      --border:    #1e2a4a;
+      --accent:    #00d4ff;
+      --accent2:   #7b2fff;
+      --glow:      rgba(0, 212, 255, 0.18);
+      --text:      #c8d8f0;
+      --muted:     #4a5a7a;
+      --danger:    #ff4d6d;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* Ambient glow blobs */
+    .bg-glow {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-glow-1 {
+      width: 600px; height: 600px;
+      background: var(--accent);
+      top: -200px; left: -100px;
+    }
+    .bg-glow-2 {
+      width: 500px; height: 500px;
+      background: var(--accent2);
+      bottom: -100px; right: -100px;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      margin-bottom: 56px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 32px;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .world-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .world-label::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 900;
+      line-height: 1.05;
+      color: #fff;
+      text-shadow:
+        0 0 30px rgba(0,212,255,0.5),
+        0 0 80px rgba(0,212,255,0.2);
+      letter-spacing: -0.01em;
+    }
+
+    h1 span {
+      color: var(--accent);
+    }
+
+    .subtitle {
+      margin-top: 10px;
+      font-size: 15px;
+      color: var(--muted);
+      font-weight: 300;
+      letter-spacing: 0.05em;
+    }
+
+    /* Updated badge */
+    .updated-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+    .updated-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    #timestamp {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+    }
+
+    /* Stats row */
+    .stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+      animation: fadeUp 0.5s both;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 40px rgba(0,212,255,0.12), 0 0 0 1px rgba(0,212,255,0.1);
+    }
+
+    /* stagger */
+    .card:nth-child(1) { animation-delay: 0.05s }
+    .card:nth-child(2) { animation-delay: 0.10s }
+    .card:nth-child(3) { animation-delay: 0.15s }
+    .card:nth-child(4) { animation-delay: 0.20s }
+    .card:nth-child(5) { animation-delay: 0.25s }
+    .card:nth-child(6) { animation-delay: 0.30s }
+    .card:nth-child(7) { animation-delay: 0.35s }
+    .card:nth-child(8) { animation-delay: 0.40s }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Corner accent */
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 24px; height: 24px;
+      border-top: 2px solid var(--accent);
+      border-right: 2px solid var(--accent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .card:hover::after { opacity: 1; }
+
+    /* Slot ID chip */
+    .slot-id {
+      position: absolute;
+      top: 10px; left: 10px;
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      background: rgba(0,212,255,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,0.3);
+      padding: 3px 8px;
+      border-radius: 2px;
+      z-index: 2;
+    }
+
+    /* Image area */
+    .card-img {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      display: block;
+      background: #0a0e1c;
+    }
+
+    /* Placeholder when no image */
+    .card-img-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: repeating-linear-gradient(
+        45deg,
+        #0a0e1c,
+        #0a0e1c 10px,
+        #0d1220 10px,
+        #0d1220 20px
+      );
+      color: var(--muted);
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card-img-placeholder svg {
+      opacity: 0.25;
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    .card-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .card-note {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.5;
+      margin-bottom: 14px;
+      min-height: 38px;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .card-url {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70%;
+    }
+
+    .copy-btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,0.3);
+      padding: 4px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover {
+      background: var(--accent);
+      color: #000;
+    }
+    .copy-btn.copied {
+      border-color: #00ff88;
+      color: #00ff88;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 64px;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer p {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-right: 8px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="world-label">VRChat World Asset Index</div>
+        <h1>My <span>World</span> Posters</h1>
+        <p class="subtitle">Live poster manifest — update files in the repo to change in-world content</p>
+      </div>
+      <div class="updated-badge">
+        <div class="updated-label">Page Generated</div>
+        <div id="timestamp">—</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="total-count">8</div>
+        <div class="stat-label">Total Slots</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="active-count">—</div>
+        <div class="stat-label">With Images</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="empty-count">—</div>
+        <div class="stat-label">Empty Slots</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid" id="poster-grid"></div>
+
+  <footer>
+    <p><span class="dot"></span>Images are fetched live — refresh to see latest uploads</p>
+    <p>github.com / your-username / your-repo</p>
+  </footer>
+
+</div>
+
+<script>
+  // ── CONFIG ─────────────────────────────────────────────────────────────────
+  // Replace YOUR_USERNAME and YOUR_REPO below, then add/edit entries in POSTERS.
+  const BASE_URL = 'https://YOUR_USERNAME.github.io/YOUR_REPO';
+
+  const POSTERS = [
+    {
+      id:    'POSTER-01',
+      file:  'posters/entrance.png',
+      label: 'Entrance Hall',
+      note:  'Greeter poster visible immediately on world join. Good for announcements or branding.',
+    },
+    {
+      id:    'POSTER-02',
+      file:  'posters/lobby.png',
+      label: 'Lobby Left',
+      note:  'Left-side panel in the main lobby area.',
+    },
+    {
+      id:    'POSTER-03',
+      file:  'posters/lobby-right.png',
+      label: 'Lobby Right',
+      note:  'Right-side panel in the main lobby area.',
+    },
+    {
+      id:    'POSTER-04',
+      file:  'posters/stage-back.png',
+      label: 'Stage Backdrop',
+      note:  'Large format backdrop behind the main stage. Recommend landscape images.',
+    },
+    {
+      id:    'POSTER-05',
+      file:  'posters/hallway-a.png',
+      label: 'Hallway A',
+      note:  'Corridor between lobby and main hall, left wall.',
+    },
+    {
+      id:    'POSTER-06',
+      file:  'posters/hallway-b.png',
+      label: 'Hallway B',
+      note:  'Corridor between lobby and main hall, right wall.',
+    },
+    {
+      id:    'POSTER-07',
+      file:  'posters/upper-deck.png',
+      label: 'Upper Deck',
+      note:  'Visible from balcony level only. Good for easter eggs.',
+    },
+    {
+      id:    'POSTER-08',
+      file:  'posters/exit.png',
+      label: 'Exit Portal',
+      note:  'Framing poster around the exit portal.',
+    },
+  ];
+  // ───────────────────────────────────────────────────────────────────────────
+
+  function buildGrid() {
+    const grid = document.getElementById('poster-grid');
+    let withImages = 0;
+
+    POSTERS.forEach(p => {
+      const url = `${BASE_URL}/${p.file}`;
+
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      // Try to load image; fall back to placeholder
+      const img = new Image();
+      img.className = 'card-img';
+      img.alt = p.label;
+
+      const placeholder = document.createElement('div');
+      placeholder.className = 'card-img-placeholder';
+      placeholder.innerHTML = `
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        NO IMAGE`;
+
+      img.onload  = () => { withImages++; updateCounts(); };
+      img.onerror = () => {
+        img.replaceWith(placeholder);
+      };
+      img.src = url;
+
+      card.innerHTML = `
+        <div class="slot-id">${p.id}</div>
+        <div class="card-body">
+          <div class="card-title">${p.label}</div>
+          <div class="card-note">${p.note}</div>
+          <div class="card-footer">
+            <div class="card-url">${p.file}</div>
+            <button class="copy-btn" data-url="${url}">COPY URL</button>
+          </div>
+        </div>`;
+
+      card.insertBefore(img, card.querySelector('.card-body'));
+      grid.appendChild(card);
+    });
+
+    document.getElementById('total-count').textContent = POSTERS.length;
+    updateCounts();
+  }
+
+  function updateCounts() {
+    const total   = POSTERS.length;
+    const imgs    = document.querySelectorAll('.card-img').length;
+    const missing = document.querySelectorAll('.card-img-placeholder').length;
+    const active  = imgs;
+    document.getElementById('active-count').textContent = active;
+    document.getElementById('empty-count').textContent  = missing;
+  }
+
+  // Copy-to-clipboard
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+    navigator.clipboard.writeText(btn.dataset.url).then(() => {
+      btn.textContent = 'COPIED!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'COPY URL';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+
+  // Timestamp
+  document.getElementById('timestamp').textContent =
+    new Date().toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+  buildGrid();
+</script>
+</body>
+</html>
