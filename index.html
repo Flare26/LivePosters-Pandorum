@@ -171,6 +171,9 @@
       font-weight: 700;
       color: #fff;
     }
+    .stat-value.accent {
+      color: var(--accent);
+    }
     .stat-label {
       font-size: 11px;
       letter-spacing: 0.15em;
@@ -288,16 +291,7 @@
       font-weight: 700;
       color: #fff;
       letter-spacing: 0.05em;
-      margin-bottom: 6px;
-    }
-
-    .card-note {
-      font-size: 13px;
-      color: var(--muted);
-      font-weight: 300;
-      line-height: 1.5;
-      margin-bottom: 14px;
-      min-height: 38px;
+      margin-bottom: 10px;
     }
 
     .card-footer {
@@ -381,7 +375,7 @@
     <div class="header-top">
       <div>
         <div class="world-label">VRChat World Asset Index</div>
-        <h1>Live Posters for <span>Pandorum</span> Posters</h1>
+        <h1>Live Posters for <span>Pandorum</span></h1>
         <p class="subtitle">Live poster manifest — update files in the repo to change in-world content</p>
       </div>
       <div class="updated-badge">
@@ -390,6 +384,10 @@
       </div>
     </div>
     <div class="stats">
+      <div class="stat">
+        <div class="stat-value accent" id="world-expects">—</div>
+        <div class="stat-label">World Expects</div>
+      </div>
       <div class="stat">
         <div class="stat-value" id="total-count">8</div>
         <div class="stat-label">Total Slots</div>
@@ -416,64 +414,37 @@
 
 <script>
   // ── CONFIG ─────────────────────────────────────────────────────────────────
-  // Replace YOUR_USERNAME and YOUR_REPO below, then add/edit entries in POSTERS.
   const BASE_URL = 'https://Flare26.github.io/LivePosters-TEST';
 
+  // The world reads this file to know how many posters to pull from the pool.
+  // Store a plain number (e.g. "6") in postercount.txt at the repo root.
+  const POSTER_COUNT_FILE = `${BASE_URL}/postercount.txt`;
+
   const POSTERS = [
-    {
-      id:    'POSTER-01',
-      file:  'LivePosters/poster1.png',
-      label: 'Entrance Hall',
-      note:  'Greeter poster visible immediately on world join. Good for announcements or branding.',
-    },
-    {
-      id:    'POSTER-02',
-      file:  'LivePosters/poster2.png',
-      label: 'Lobby Left',
-      note:  'Left-side panel in the main lobby area.',
-    },
-    {
-      id:    'POSTER-03',
-      file:  'LivePosters/poster3.png',
-      label: 'Lobby Right',
-      note:  'Right-side panel in the main lobby area.',
-    },
-    {
-      id:    'POSTER-04',
-      file:  'LivePosters/poster4.png',
-      label: 'Stage Backdrop',
-      note:  'Large format backdrop behind the main stage. Recommend landscape images.',
-    },
-    {
-      id:    'POSTER-05',
-      file:  'LivePosters/poster5.png',
-      label: 'Hallway A',
-      note:  'Corridor between lobby and main hall, left wall.',
-    },
-    {
-      id:    'POSTER-06',
-      file:  'LivePosters/poster6.png',
-      label: 'Hallway B',
-      note:  'Corridor between lobby and main hall, right wall.',
-    },
-    {
-      id:    'POSTER-07',
-      file:  'posters/upper-deck.png',
-      label: 'Upper Deck',
-      note:  'Visible from balcony level only. Good for easter eggs.',
-    },
-    {
-      id:    'POSTER-08',
-      file:  'posters/exit.png',
-      label: 'Exit Portal',
-      note:  'Framing poster around the exit portal.',
-    },
+    { id: 'POSTER-01', file: 'LivePosters/poster1.png',  label: 'Poster 1' },
+    { id: 'POSTER-02', file: 'LivePosters/poster2.png',  label: 'Poster 2' },
+    { id: 'POSTER-03', file: 'LivePosters/poster3.png',  label: 'Poster 3' },
+    { id: 'POSTER-04', file: 'LivePosters/poster4.png',  label: 'Poster 4' },
+    { id: 'POSTER-05', file: 'LivePosters/poster5.png',  label: 'Poster 5' },
+    { id: 'POSTER-06', file: 'LivePosters/poster6.png',  label: 'Poster 6' },
+    { id: 'POSTER-07', file: 'LivePosters/poster7.png',  label: 'Poster 7' },
+    { id: 'POSTER-08', file: 'LivePosters/poster8.png',  label: 'Poster 8' },
   ];
   // ───────────────────────────────────────────────────────────────────────────
 
+  // Fetch the world-expected poster count from postercount.txt
+  fetch(POSTER_COUNT_FILE)
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(txt => {
+      const n = parseInt(txt.trim(), 10);
+      document.getElementById('world-expects').textContent = isNaN(n) ? '—' : n;
+    })
+    .catch(() => {
+      document.getElementById('world-expects').textContent = '—';
+    });
+
   function buildGrid() {
     const grid = document.getElementById('poster-grid');
-    let withImages = 0;
 
     POSTERS.forEach(p => {
       const url = `${BASE_URL}/${p.file}`;
@@ -495,9 +466,10 @@
         </svg>
         NO IMAGE`;
 
-      img.onload  = () => { withImages++; updateCounts(); };
+      img.onload  = () => { updateCounts(); };
       img.onerror = () => {
         img.replaceWith(placeholder);
+        updateCounts();
       };
       img.src = url;
 
@@ -505,7 +477,6 @@
         <div class="slot-id">${p.id}</div>
         <div class="card-body">
           <div class="card-title">${p.label}</div>
-          <div class="card-note">${p.note}</div>
           <div class="card-footer">
             <div class="card-url">${p.file}</div>
             <button class="copy-btn" data-url="${url}">COPY URL</button>
@@ -522,9 +493,8 @@
 
   function updateCounts() {
     const total   = POSTERS.length;
-    const imgs    = document.querySelectorAll('.card-img').length;
+    const active  = document.querySelectorAll('.card-img').length;
     const missing = document.querySelectorAll('.card-img-placeholder').length;
-    const active  = imgs;
     document.getElementById('active-count').textContent = active;
     document.getElementById('empty-count').textContent  = missing;
   }
